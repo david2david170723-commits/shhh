@@ -1,0 +1,442 @@
+```html
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Змійка</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #071a0c, #123b1c, #06140a);
+            color: white;
+        }
+
+        .game {
+            text-align: center;
+            padding: 25px;
+            background: #101c14;
+            border: 2px solid #35d05b;
+            border-radius: 20px;
+            box-shadow: 0 0 30px rgba(53, 208, 91, 0.4);
+        }
+
+        h1 {
+            margin-top: 0;
+            color: #4cff70;
+            text-shadow: 0 0 10px #35d05b;
+        }
+
+        .score {
+            font-size: 22px;
+            margin-bottom: 15px;
+        }
+
+        #score {
+            color: #ffdf3d;
+            font-weight: bold;
+        }
+
+        canvas {
+            display: block;
+            width: 400px;
+            height: 400px;
+            max-width: 100%;
+            background: #07100a;
+            border: 2px solid #35d05b;
+            border-radius: 10px;
+        }
+
+        .message {
+            min-height: 25px;
+            margin: 15px 0;
+            color: #ffdf3d;
+            font-weight: bold;
+        }
+
+        button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 10px;
+            background: #35d05b;
+            color: #06140a;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #4cff70;
+        }
+
+        .controls {
+            margin-top: 15px;
+            display: grid;
+            grid-template-columns: repeat(3, 55px);
+            justify-content: center;
+            gap: 5px;
+        }
+
+        .controls button {
+            padding: 10px;
+            font-size: 20px;
+        }
+
+        .empty {
+            visibility: hidden;
+        }
+
+        @media (max-width: 450px) {
+            .game {
+                width: 95%;
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="game">
+
+    <h1>🐍 ЗМІЙКА</h1>
+
+    <div class="score">
+        Рахунок: <span id="score">0</span>
+    </div>
+
+    <canvas id="gameCanvas" width="400" height="400"></canvas>
+
+    <div class="message" id="message">
+        Використовуй стрілки для керування
+    </div>
+
+    <button id="restart">🔄 Почати знову</button>
+
+    <div class="controls">
+        <button class="empty"></button>
+        <button onclick="changeDirection('up')">⬆️</button>
+        <button class="empty"></button>
+
+        <button onclick="changeDirection('left')">⬅️</button>
+        <button onclick="changeDirection('down')">⬇️</button>
+        <button onclick="changeDirection('right')">➡️</button>
+    </div>
+
+</div>
+
+<script>
+
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    const scoreElement = document.getElementById("score");
+    const messageElement = document.getElementById("message");
+    const restartButton = document.getElementById("restart");
+
+    const cellSize = 20;
+    const boardSize = 400;
+
+    let snake;
+    let food;
+    let direction;
+    let nextDirection;
+    let score;
+    let gameOver;
+    let gameInterval;
+
+
+    // Початок гри
+    function startGame() {
+
+        snake = [
+            { x: 200, y: 200 },
+            { x: 180, y: 200 },
+            { x: 160, y: 200 }
+        ];
+
+        direction = "right";
+        nextDirection = "right";
+
+        score = 0;
+        gameOver = false;
+
+        scoreElement.textContent = score;
+        messageElement.textContent =
+            "Використовуй стрілки для керування";
+
+        createFood();
+
+        clearInterval(gameInterval);
+
+        gameInterval = setInterval(gameLoop, 120);
+
+        draw();
+    }
+
+
+    // Створення яблука
+    function createFood() {
+
+        food = {
+            x: Math.floor(Math.random() * (boardSize / cellSize)) * cellSize,
+            y: Math.floor(Math.random() * (boardSize / cellSize)) * cellSize
+        };
+
+        // Перевіряємо, щоб яблуко не з'явилось всередині змійки
+        for (let part of snake) {
+
+            if (food.x === part.x && food.y === part.y) {
+                createFood();
+                return;
+            }
+        }
+    }
+
+
+    // Зміна напрямку
+    function changeDirection(newDirection) {
+
+        if (newDirection === "up" && direction !== "down") {
+            nextDirection = "up";
+        }
+
+        if (newDirection === "down" && direction !== "up") {
+            nextDirection = "down";
+        }
+
+        if (newDirection === "left" && direction !== "right") {
+            nextDirection = "left";
+        }
+
+        if (newDirection === "right" && direction !== "left") {
+            nextDirection = "right";
+        }
+    }
+
+
+    // Керування клавіатурою
+    document.addEventListener("keydown", function(event) {
+
+        if (event.key === "ArrowUp") {
+            changeDirection("up");
+        }
+
+        if (event.key === "ArrowDown") {
+            changeDirection("down");
+        }
+
+        if (event.key === "ArrowLeft") {
+            changeDirection("left");
+        }
+
+        if (event.key === "ArrowRight") {
+            changeDirection("right");
+        }
+    });
+
+
+    // Основний цикл гри
+    function gameLoop() {
+
+        if (gameOver) {
+            return;
+        }
+
+        direction = nextDirection;
+
+        let head = {
+            x: snake[0].x,
+            y: snake[0].y
+        };
+
+
+        // Рух змійки
+        if (direction === "up") {
+            head.y -= cellSize;
+        }
+
+        if (direction === "down") {
+            head.y += cellSize;
+        }
+
+        if (direction === "left") {
+            head.x -= cellSize;
+        }
+
+        if (direction === "right") {
+            head.x += cellSize;
+        }
+
+
+        // Перевірка зіткнення зі стіною
+        if (
+            head.x < 0 ||
+            head.x >= boardSize ||
+            head.y < 0 ||
+            head.y >= boardSize
+        ) {
+
+            endGame();
+            return;
+        }
+
+
+        // Перевірка зіткнення з тілом
+        for (let part of snake) {
+
+            if (
+                head.x === part.x &&
+                head.y === part.y
+            ) {
+
+                endGame();
+                return;
+            }
+        }
+
+
+        // Додаємо нову голову
+        snake.unshift(head);
+
+
+        // Перевірка яблука
+        if (
+            head.x === food.x &&
+            head.y === food.y
+        ) {
+
+            score++;
+
+            scoreElement.textContent = score;
+
+            createFood();
+
+        } else {
+
+            // Якщо яблуко не з'їдено —
+            // видаляємо хвіст
+            snake.pop();
+        }
+
+
+        draw();
+    }
+
+
+    // Малювання гри
+    function draw() {
+
+        // Фон
+        ctx.fillStyle = "#07100a";
+        ctx.fillRect(0, 0, boardSize, boardSize);
+
+
+        // Сітка
+        ctx.strokeStyle = "#122619";
+
+        for (let i = 0; i <= boardSize; i += cellSize) {
+
+            ctx.beginPath();
+            ctx.moveTo(i, 0);
+            ctx.lineTo(i, boardSize);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(0, i);
+            ctx.lineTo(boardSize, i);
+            ctx.stroke();
+        }
+
+
+        // Яблуко
+        ctx.fillStyle = "#ff3b3b";
+
+        ctx.beginPath();
+
+        ctx.arc(
+            food.x + cellSize / 2,
+            food.y + cellSize / 2,
+            8,
+            0,
+            Math.PI * 2
+        );
+
+        ctx.fill();
+
+
+        // Змійка
+        snake.forEach(function(part, index) {
+
+            if (index === 0) {
+                ctx.fillStyle = "#7dff8a";
+            } else {
+                ctx.fillStyle = "#35d05b";
+            }
+
+            ctx.fillRect(
+                part.x + 2,
+                part.y + 2,
+                cellSize - 4,
+                cellSize - 4
+            );
+        });
+    }
+
+
+    // Кінець гри
+    function endGame() {
+
+        gameOver = true;
+
+        clearInterval(gameInterval);
+
+        messageElement.textContent =
+            "💥 Гра закінчена! Рахунок: " + score;
+
+        // Затемнення
+        ctx.fillStyle = "rgba(0, 0, 0, 0.65)";
+        ctx.fillRect(0, 0, boardSize, boardSize);
+
+        ctx.fillStyle = "white";
+        ctx.font = "bold 32px Arial";
+        ctx.textAlign = "center";
+
+        ctx.fillText(
+            "Гру завершено!",
+            boardSize / 2,
+            boardSize / 2 - 10
+        );
+
+        ctx.font = "20px Arial";
+
+        ctx.fillText(
+            "Рахунок: " + score,
+            boardSize / 2,
+            boardSize / 2 + 30
+        );
+    }
+
+
+    // Перезапуск
+    restartButton.addEventListener("click", startGame);
+
+
+    // Запускаємо гру
+    startGame();
+
+</script>
+
+</body>
+</html>
+```
